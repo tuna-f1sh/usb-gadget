@@ -2,16 +2,18 @@
 //!
 //! The Linux kernel configuration option `CONFIG_USB_CONFIGFS_F_UVC` must be enabled.
 use std::{
-    ffi::{OsStr, OsString}, io::{Error, ErrorKind, Result}, path::{Path, PathBuf},
-    fs,
     collections::HashSet,
+    ffi::{OsStr, OsString},
+    fs,
+    io::{Error, ErrorKind, Result},
+    path::{Path, PathBuf},
 };
 
-use crate::Speed;
 use super::{
     util::{FunctionDir, Status},
     Function, Handle,
 };
+use crate::Speed;
 
 pub(crate) fn driver() -> &'static OsStr {
     OsStr::new("uvc")
@@ -47,7 +49,8 @@ impl UvcFormat {
     }
 
     fn group_path(&self) -> PathBuf {
-        format!("streaming/{}/{}", self.group_dir_name().to_string_lossy(), self.dir_name().to_string_lossy()).into()
+        format!("streaming/{}/{}", self.group_dir_name().to_string_lossy(), self.dir_name().to_string_lossy())
+            .into()
     }
 
     fn color_matching_path(&self) -> PathBuf {
@@ -166,8 +169,14 @@ impl Function for UvcFunction {
             self.dir.create_dir_all(frame.path())?;
             self.dir.write(frame.path().join("wWidth"), frame.width.to_string())?;
             self.dir.write(frame.path().join("wHeight"), frame.height.to_string())?;
-            self.dir.write(frame.path().join("dwMaxVideoFrameBufferSize"), (frame.width * frame.height * 2).to_string())?;
-            self.dir.write(frame.path().join("dwFrameInterval"), frame.intervals.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("\n"))?;
+            self.dir.write(
+                frame.path().join("dwMaxVideoFrameBufferSize"),
+                (frame.width * frame.height * 2).to_string(),
+            )?;
+            self.dir.write(
+                frame.path().join("dwFrameInterval"),
+                frame.intervals.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("\n"),
+            )?;
             formats_to_link.insert(frame.format);
 
             if let Some(color_matching) = frame.color_matching.as_ref() {
@@ -175,9 +184,18 @@ impl Function for UvcFunction {
                 // can only have one color matching information per format
                 if !color_matching_path.is_dir() {
                     self.dir.create_dir_all(&color_matching_path)?;
-                    self.dir.write(frame.format.color_matching_path().join("bColorPrimaries"), color_matching.color_primaries.to_string())?;
-                    self.dir.write(frame.format.color_matching_path().join("bTransferCharacteristics"), color_matching.transfer_characteristics.to_string())?;
-                    self.dir.write(frame.format.color_matching_path().join("bMatrixCoefficients"), color_matching.matrix_coefficients.to_string())?;
+                    self.dir.write(
+                        frame.format.color_matching_path().join("bColorPrimaries"),
+                        color_matching.color_primaries.to_string(),
+                    )?;
+                    self.dir.write(
+                        frame.format.color_matching_path().join("bTransferCharacteristics"),
+                        color_matching.transfer_characteristics.to_string(),
+                    )?;
+                    self.dir.write(
+                        frame.format.color_matching_path().join("bMatrixCoefficients"),
+                        color_matching.matrix_coefficients.to_string(),
+                    )?;
                     self.dir.symlink(&color_matching_path, frame.format.group_path().join("color_matching"))?;
                 } else {
                     log::warn!("Color matching information already exists for format {:?}", frame.format);
@@ -199,15 +217,15 @@ impl Function for UvcFunction {
             Some(Speed::FullSpeed) => {
                 self.dir.symlink("streaming/header/h", "streaming/class/fs/h")?;
                 self.dir.symlink("control/header/h", "control/class/fs/h")?;
-            },
+            }
             Some(Speed::HighSpeed) => {
                 self.dir.symlink("streaming/header/h", "streaming/class/hs/h")?;
                 self.dir.symlink("control/header/h", "control/class/hs/h")?;
-            },
+            }
             Some(Speed::SuperSpeed) => {
                 self.dir.symlink("streaming/header/h", "streaming/class/ss/h")?;
                 self.dir.symlink("control/header/h", "control/class/ss/h")?;
-            },
+            }
             // default to all speeds
             _ => {
                 self.dir.symlink("streaming/header/h", "streaming/class/fs/h")?;
@@ -268,10 +286,7 @@ impl Uvc {
                 format,
             })
             .collect();
-        UvcBuilder {
-            frames,
-            ..Default::default()
-        }
+        UvcBuilder { frames, ..Default::default() }
     }
 
     /// Access to registration status.
@@ -327,8 +342,7 @@ pub(crate) fn remove_handler(dir: PathBuf) -> Result<()> {
                 for entry in fs::read_dir(&group_dir)? {
                     let Ok(entry) = entry else { continue };
                     let path = entry.path();
-                    if path.is_dir()
-                        && !path.is_symlink() {
+                    if path.is_dir() && !path.is_symlink() {
                         log::trace!("removing UVC frame {:?}", path);
                         fs::remove_dir(path)?;
                     }
@@ -337,7 +351,6 @@ pub(crate) fn remove_handler(dir: PathBuf) -> Result<()> {
                 log::trace!("removing UVC group {:?}", group_dir);
                 fs::remove_dir(group_dir)?;
             }
-
         }
     }
 
